@@ -1,13 +1,14 @@
 # Buzz — AI-Powered News Aggregation Platform
 
-An end-to-end AI-integrated news pipeline built with Java and Spring Boot. Aggregates content from multiple sources, processes it through a local LLM for summarization and quality scoring, and serves it via a clean REST API with category filtering, trending detection, and full-text search.
+An end-to-end AI-integrated news pipeline built with Java and Spring Boot. Aggregates content from multiple sources, summarizes it with a locally hosted LLM, and serves it via a REST API with category filtering, trending news and keyword search.
 
 ---
 
 ## Features
 
-- **AI Summarization Pipeline** — Articles are fetched, queued via Redis, processed by a local LLM (Gemma3:4b), and persisted only if they pass quality and similarity checks
-- **90% Performance Improvement** — Pipeline execution time reduced from ~10 minutes to under 1 minute through async Redis message queues
+- **AI Summarization Pipeline** — Articles are fetched from NewsAPI, their full text is scraped with Jsoup, queued on a Redis Stream, summarized by a local LLM (Gemma3:4b) and persisted to PostgreSQL
+- **Reliable Queue Consumption** — Redis Streams consumer group with explicit `XACK`: a message is acknowledged only after it is processed, so failures are retried instead of lost (at-least-once delivery)
+- **90% Performance Improvement** — Pipeline execution time reduced from ~10 minutes to under 1 minute by moving to an asynchronous Redis Streams producer/consumer design
 - **LLM Benchmarking** — Tested Gemma3 and Qwen3 variants from 0.5B to 30B parameters; selected Gemma3:4b for optimal speed/quality on local hardware
 - **Category System** — Slug-based category management with ADMIN-only write access
 - **News Feed** — Paginated news listing with category filtering, trending detection, and keyword search
@@ -25,24 +26,22 @@ An end-to-end AI-integrated news pipeline built with Java and Spring Boot. Aggre
 | Queue | Redis (async pipeline) |
 | AI Runtime | Ollama (Gemma3:4b) |
 | Auth | JWT, Spring Security |
-| Sources | NewsAPI, RSS Feeds, Web Scraping |
+| Sources | NewsAPI + full-article scraping (Jsoup) |
 
 ---
 
 ## Architecture
 
 ```
-NewsAPI / RSS Feeds / Web Scraping
+NewsAPI → full-text scraping (Jsoup)
             │
             ▼
      Async Ingestion Layer
-     (Redis Message Queue)
+     (Redis Stream + consumer group)
             │
             ▼
      AI Processing (Ollama — Gemma3:4b)
-     ├── Summarization
-     ├── Quality Scoring
-     └── Similarity Filtering
+     └── Turkish summarization
             │
             ▼
        PostgreSQL
@@ -95,8 +94,8 @@ NewsAPI / RSS Feeds / Web Scraping
 |---|---|---|---|
 | GET | `/me` | Authenticated | Get own profile |
 | PUT | `/me` | Authenticated | Update own profile |
-| GET | `/{id}` | Public | Get user by ID |
-| DELETE | `/{id}` | Public | Delete user |
+| GET | `/{id}` | Authenticated | Get user by ID |
+| DELETE | `/{id}` | ADMIN | Delete user |
 
 ---
 
@@ -116,10 +115,10 @@ ollama pull gemma3:4b
 ### Setup
 
 ```bash
-git clone https://github.com/your-username/buzz.git
-cd buzz
+git clone https://github.com/yusufgokkayy/buzz-application.git
+cd buzz-application
 
-# Configure src/main/resources/application.properties
+# Configure src/main/resources/application.yml
 ./mvnw spring-boot:run
 ```
 
