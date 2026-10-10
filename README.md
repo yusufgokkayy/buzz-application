@@ -144,3 +144,7 @@ news-api.key=your_newsapi_key
 ## Project Status
 
 Active development — core pipeline, news feed, and auth are complete and stable.
+
+## License
+
+All Rights Reserved. This code is published for viewing and evaluation only; see [LICENSE](LICENSE).
